@@ -121,6 +121,63 @@ uint32_t IFFreq = SR[SampleRate].rate / 4;  // IF (intermediate) frequency
   si5351.output_enable(SI5351_CLK1, 1);
 }
 
+#define SERIAL_PRINT_LL(llnumber) Serial.print(llnumber)
+ // siFrequency is in 1/100 of Hz
+void SetFreqWithQuadrature(unsigned long long siFrequency){
+  static uint16_t currentDivider;
+  bool bMustChangeDivider;
+  uint64_t pll_freq;
+
+  Serial.print("si5351 requested frequency: ");
+  SERIAL_PRINT_LL(siFrequency / SI5351_FREQ_MULT);
+  // check if we have to change Divider
+  bMustChangeDivider = (siFrequency * currentDivider / SI5351_FREQ_MULT > SI5351_PLL_VCO_MAX || siFrequency * currentDivider / SI5351_FREQ_MULT < SI5351_PLL_VCO_MIN);
+  if (bMustChangeDivider){
+    uint16_t divider;
+    divider = 1 + (SI5351_PLL_VCO_MIN + SI5351_PLL_VCO_MAX)/2 * SI5351_FREQ_MULT / siFrequency; // center on pll band
+    divider &=  0xFFFE; // make it even
+    if (divider < 4)
+      divider = 4;
+    Serial.print(" previous divider: ");
+    Serial.print(currentDivider);
+    currentDivider = divider;
+    Serial.print(" new divider: ");
+    Serial.print(currentDivider);
+  }
+  pll_freq = siFrequency * currentDivider;
+  
+  Serial.print(" pll frequency: ");
+  SERIAL_PRINT_LL(pll_freq / SI5351_FREQ_MULT);
+  Serial.print(" divider: ");
+  Serial.print(currentDivider);
+  Serial.print(" remainder: ");
+  SERIAL_PRINT_LL(pll_freq % siFrequency);
+  Serial.println("");
+
+  // use the manual interface
+  // Set CLK0 and CLK1 to output using the computed PLL frequency
+  si5351.set_freq_manual(siFrequency, pll_freq, SI5351_CLK0);
+  si5351.set_freq_manual(siFrequency, pll_freq, SI5351_CLK1);
+  si5351.set_freq_manual(siFrequency - 3000 * SI5351_FREQ_MULT, pll_freq, SI5351_CLK2); // set test generator 3kHz below
+
+  if (1 || bMustChangeDivider){ // always reset PLL for now
+    si5351.set_phase(SI5351_CLK0, 0);
+    si5351.set_phase(SI5351_CLK1, 0);
+
+    si5351.pll_reset(SI5351_PLLA);
+
+    //cli(); // mask interrupts to get precise timing
+    si5351.set_freq_manual(siFrequency, pll_freq, SI5351_CLK0);
+    si5351.set_freq_manual(siFrequency - 1000, pll_freq, SI5351_CLK1); // 10Hz lower
+    delay(20);
+    //delayMicroseconds(21000); //  wait for the phase to become -90 degrees
+    si5351.set_freq_manual(siFrequency, pll_freq, SI5351_CLK1);
+    //sei();
+  } else {
+    si5351.set_freq_manual(siFrequency, pll_freq, SI5351_CLK0);
+    si5351.set_freq_manual(siFrequency - 1000, pll_freq, SI5351_CLK1);
+  }
+}
 
 /*****
   Purpose: SetFrequency
@@ -156,8 +213,8 @@ uint32_t IFFreq = SR[SampleRate].rate / 4;  // IF (intermediate) frequency
   Clk2SetFreq = ((EEPROMData.centerFreq * SI5351_FREQ_MULT) + IFFreq * SI5351_FREQ_MULT) * MASTER_CLK_MULT_RX;
 
   if (radioState == RadioState::SSB_RECEIVE_STATE || radioState == RadioState::CW_RECEIVE_STATE || radioState == RadioState::AM_RECEIVE_STATE) {  //  Receive state
-    si5351.set_freq(Clk2SetFreq, SI5351_CLK2);
-    si5351.output_enable(SI5351_CLK1, 0);  // CLK1 (transmit) off during receive to prevent birdies
+    SetFreqWithQuadrature(Clk2SetFreq);
+    si5351.output_enable(SI5351_CLK1, 1);
     si5351.output_enable(SI5351_CLK2, 1);
   }
 
@@ -168,6 +225,7 @@ uint32_t IFFreq = SR[SampleRate].rate / 4;  // IF (intermediate) frequency
   }
   //=====================  AFP 10-03-22 =================
   DrawFrequencyBarValue();
+  Serial.printf("Clk2SetFreq = %llu kHz IF = %lu Hz\n", Clk2SetFreq/100000, IFFreq);
 }
 #endif
 

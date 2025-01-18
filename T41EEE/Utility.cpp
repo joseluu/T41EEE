@@ -459,7 +459,7 @@ float ApproxAtan(float z) {
 
 /*****
   Purpose: function reads the analog value for each matrix switch and stores that value in EEPROM.
-           Only called if STORE_SWITCH_VALUES is uncommented.
+           Only called if grep is uncommented.
 
   Parameter list:
     void
@@ -482,6 +482,7 @@ void SaveAnalogSwitchValues() {
   int value;
   int origRepeatDelay;
 
+  return; 
   tft.clearMemory();  // Need to clear overlay too
   tft.writeTo(L2);
   tft.fillWindow();

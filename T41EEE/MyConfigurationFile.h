@@ -13,7 +13,7 @@
 #define MY_LAT										39.07466                                  // Coordinates for QTH
 #define MY_LON										-84.42677
 #define MY_CALL										"YOUR CALL"                                   // Default max is 10 chars
-#define MY_TIMEZONE          			"EST: "                                   // Default max is 10 chars
+#define MY_TIMEZONE          			"CET: "                                   // Default max is 10 chars
 //DB2OO, 29-AUG-23: TIME_24H to display 24 hour times (Utility.cpp). If this is not defined 12h display will be used
 #define TIME_24H                  1
 //DB2OO, 29-AUG-23: ITU_REGION to determine band borders: Upper band limits on 80m (3.8MHz vs 4.0MhHz) and 40m (7.2MHz vs. 7.3MHz)
@@ -52,7 +52,7 @@
 //#define                           FOURSQRP
 
 // Set multiplication factors for your QSD and QSE boards.
-#define MASTER_CLK_MULT_RX 4
+#define MASTER_CLK_MULT_RX 1 // F1FGV board
 #define MASTER_CLK_MULT_TX 4
 
 // Uncomment this line for QSE2.

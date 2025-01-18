@@ -1327,6 +1327,7 @@ void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
   bool cwKeyDown;
   unsigned long cwBlockIndex;
 
+#if 0
   menu = readButton();
   if (menu != MenuSelect::BOGUS_PIN_READ and (radioState != RadioState::SSB_TRANSMIT_STATE) and (radioState != RadioState::CW_TRANSMIT_STRAIGHT_STATE) and (radioState != RadioState::CW_TRANSMIT_KEYER_STATE)) {
     ExecuteButtonPress(menu);
@@ -1342,6 +1343,8 @@ void loop()  // Replaced entire loop() with Greg's code  JJP  7/14/23
   radioMode = RadioMode::AM_MODE;             // AM is currently receive only.
   keyPressedOn = 0;
   }
+#endif
+  radioState = RadioState::SSB_RECEIVE_STATE;
 
   if (lastState != radioState) {
     SetAudioOperatingState(radioState);
