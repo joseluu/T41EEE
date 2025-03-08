@@ -3,3 +3,5 @@ temp
 ./T41EEE/archive
 log.txt
 
+.vscode/
+*.old

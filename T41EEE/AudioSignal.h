@@ -5,11 +5,18 @@
 //const float sample_rate_Hz = 48000.0f;
 //const int   audio_block_samples = 128;  // Always 128
 //AudioSettings_F32 audio_settings(sample_rate_Hz, audio_block_samples);
+#ifdef RECEIVE_ONLY
+AudioInputI2S i2s_quadIn;     // 4 inputs/outputs available only in Teensy audio not Open Audio library.
+AudioOutputI2S i2s_quadOut;
+#else
 AudioInputI2SQuad i2s_quadIn;     // 4 inputs/outputs available only in Teensy audio not Open Audio library.
 AudioOutputI2SQuad i2s_quadOut;
+#endif
 
+#ifdef TRANSMITTER
 // Transmitter
 AudioControlSGTL5000_Extended sgtl5000_1;      // Controller for the Teensy Audio Board, transmitter only.
+#endif // TRANSMITTER
 AudioConvert_I16toF32 int2Float1;              // Converts Int16 to Float.  See class in AudioStream_F32.h
 //AudioEffectGain_F32 micGain(audio_settings);                   // Microphone gain control.
 AudioEffectGain_F32 micGain;                   // Microphone gain control.
@@ -65,12 +72,21 @@ AudioRecordQueue Q_in_R;
 AudioPlayQueue Q_out_L;
 //AudioPlayQueue Q_out_R;  2nd audio channel not used.  KF5N March 11, 2024
 
+#ifdef RECEIVE_ONLY
+AudioConnection patchCord9(i2s_quadIn, 0, Q_in_L, 0);  // Receiver I and Q channel data stream.
+AudioConnection patchCord10(i2s_quadIn, 1, Q_in_R, 0);
+#else
 AudioConnection patchCord9(i2s_quadIn, 2, Q_in_L, 0);  // Receiver I and Q channel data stream.
 AudioConnection patchCord10(i2s_quadIn, 3, Q_in_R, 0);
+#endif
 
 AudioAmplifier volumeAdjust;
 AudioConnection patchCord17(Q_out_L, 0, volumeAdjust, 0);
+#ifdef RECEIVE_ONLY
+AudioConnection patchCord18(volumeAdjust, 0, i2s_quadOut, 0);
+#else
 AudioConnection patchCord18(volumeAdjust, 0, i2s_quadOut, 2);
+#endif
 
 AudioControlSGTL5000 sgtl5000_2;  // This is not a 2nd Audio Adapter.  It is I2S to the PCM1808 (ADC I and Q receiver in) and PCM5102 (DAC audio out).
 // End dataflow code
@@ -108,21 +124,23 @@ void SetAudioOperatingState(RadioState operatingState) {
       SetI2SFreq(SR[SampleRate].rate);   
       // Deactivate microphone and 1 kHz test tone.
       mixer1.gain(0, 0.0);
-      mixer1.gain(1, 0.0);
+      mixer1.gain(1, 0.0);   
       switch1.setChannel(1);  // Disconnect microphone path.
       switch2.setChannel(1);  //  Disconnect 1 kHz test tone path.
       // Stop and clear the data buffers.     
       Q_in_L.end();                                        // Receiver I channel
       Q_in_R.end();                                        // Receiver Q channel
       Q_in_L.clear();                                      // Receiver I channel
-      Q_in_R.clear();                                      // Receiver Q channel      
+      Q_in_R.clear();                                      // Receiver Q channel     
       Q_in_L_Ex.end();  // Transmit I channel path.
       Q_in_R_Ex.end();  // Transmit Q channel path.
       Q_in_L_Ex.clear();
       Q_in_R_Ex.clear();
       // Deactivate TX audio output path.
+#ifdef TRANSMITTER
       patchCord15.disconnect();  // Disconnect transmitter I and Q channel outputs.
       patchCord16.disconnect();
+#endif
       // QSD connected and enabled
       Q_in_L.begin();                                        // Receiver I channel
       Q_in_R.begin();                                        // Receiver Q channel
@@ -133,6 +151,7 @@ void SetAudioOperatingState(RadioState operatingState) {
       volumeAdjust.gain(volumeLog[EEPROMData.audioVolume]);  // Set volume because sidetone may have changed it.
       break;
     case RadioState::SSB_TRANSMIT_STATE:
+      Serial.printf("SSB_TRANSMIT\n");
       // QSD disabled and disconnected
       patchCord9.disconnect();   // Receiver I channel
       patchCord10.disconnect();  // Receiver Q channel
@@ -161,13 +180,14 @@ void SetAudioOperatingState(RadioState operatingState) {
             mixer2.gain(1, 1.0);
       }
 
+#ifdef TRANSMITTER
       cessb1.getLevels(0);  // Initialize the CESSB information struct.
       patchCord15.connect();  // Transmitter I channel
       patchCord16.connect();  // Transmitter Q channel
 
       Q_in_L_Ex.begin();  // I channel Microphone audio
       Q_in_R_Ex.begin();  // Q channel Microphone audio
-
+#endif
       break;
 
     case RadioState::SSB_CALIBRATE_STATE:
@@ -204,20 +224,24 @@ void SetAudioOperatingState(RadioState operatingState) {
             mixer2.gain(1, 1.0);
       }
 
+#ifdef TRANSMITTER
       Q_out_L_Ex.setBehaviour(AudioPlayQueue::ORIGINAL);  // Need this as CW will put into wrong mode.  Greg KF5N August 4, 2024.
       Q_out_R_Ex.setBehaviour(AudioPlayQueue::ORIGINAL);
       Q_in_L_Ex.begin();  // I channel Microphone audio
       Q_in_R_Ex.begin();  // Q channel Microphone audio
+#endif
       Q_in_L.begin();     // Calibration is full duplex!  Activate receiver.
       Q_in_R.begin();
+#ifdef TRANSMITTER
       patchCord15.connect();  // Transmitter I channel
       patchCord16.connect();  // Transmitter Q channel
-
+#endif
       break;
 
     case RadioState::CW_TRANSMIT_STRAIGHT_STATE:
     case RadioState::CW_TRANSMIT_KEYER_STATE:
       // QSD disabled and disconnected
+      Serial.printf("CW_TRANSMIT\n");
       patchCord9.disconnect();
       patchCord10.disconnect();
       Q_in_L.end();
@@ -225,6 +249,7 @@ void SetAudioOperatingState(RadioState operatingState) {
       Q_in_R.end();
       Q_in_R.clear();
 
+#ifdef TRANSMITTER
       // Baseband CESSB data cleared and ended.
       Q_in_L_Ex.end();  // Clear I channel.
       Q_in_L_Ex.clear();
@@ -233,6 +258,7 @@ void SetAudioOperatingState(RadioState operatingState) {
 
       patchCord15.connect();  // Connect I and Q transmitter output channels.
       patchCord16.connect();
+#endif
       patchCord17.connect();                                    // Sidetone goes into receiver audio path.
       volumeAdjust.gain(volumeLog[EEPROMData.sidetoneVolume]);  // Adjust sidetone volume.
 
@@ -267,14 +293,17 @@ void SetAudioOperatingState(RadioState operatingState) {
       Q_in_L.begin();     // Calibration is full duplex!
       Q_in_R.begin();
       //  Transmitter back-end needs to be active during CW calibration.
+#ifdef TRANSMITTER
       patchCord15.connect();  // Transmitter I channel
       patchCord16.connect();  // Transmitter Q channel
+#endif
 
       break;
 
       case RadioState::SET_CW_SIDETONE:
       SampleRate = SAMPLE_RATE_192K;
       SetI2SFreq(SR[SampleRate].rate);
+      Serial.printf("SET_CW_SIDETONE\n");
       patchCord9.disconnect();
       patchCord10.disconnect();
       // Baseband CESSB data cleared and ended.

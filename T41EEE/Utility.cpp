@@ -668,7 +668,7 @@ void SetBand() {
 *****/
 int SDPresentCheck() {
   if (!SD.begin(chipSelect)) {
-    Serial.print("No SD card or cannot be initialized.");
+    Serial.printf("No SD card or cannot be initialized\n");
     tft.setFontScale((enum RA8875tsize)1);
     tft.setForegroundColor(RA8875_RED);
     tft.setCursor(20, 300);

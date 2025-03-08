@@ -1127,32 +1127,41 @@ FLASHMEM void setup() {
   Teensy3Clock.set(now());  // set the RTC
   T4_rtc_set(Teensy3Clock.get());
 
+#ifdef TRANSMITTER
   sgtl5000_1.setAddress(LOW);  // This is not documented.  See QuadChannelOutput example.
   sgtl5000_1.enable();
   sgtl5000_1.audioPreProcessorEnable();  // Need to use one of the equalizers.
   sgtl5000_1.eqSelect(3);
   sgtl5000_1.eqBands(-1.0, 0.0, 1.0, 1.0, -1.0);
+#endif
   AudioMemory(200);  //  Increased to 450 from 400.  Memory was hitting max.  KF5N August 31, 2023
   AudioMemory_F32(10);
-  sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
+#ifdef TRANSMITTER
+  sgtl5000_1.inputSelect(AUDIO_INPUT_LINEIN);
   sgtl5000_1.muteHeadphone();  // KF5N March 11, 2024
   sgtl5000_1.micGain(0);
-  sgtl5000_1.lineInLevel(0);
+  sgtl5000_1.lineInLevel(31);
 #ifdef QSE2
   sgtl5000_1.lineOutLevel(13);  // Setting of 13 limits line-out level to 3.15 volts p-p (maximum).
 #else
   sgtl5000_1.lineOutLevel(20);  // Setting of 20 limits line-out level to 2.14 volts p-p.
 #endif
-sgtl5000_1.adcHighPassFilterEnable();  
-//sgtl5000_1.adcHighPassFilterDisable();  //reduces noise.  https://forum.pjrc.com/threads/27215-24-bit-audio-boards?p=78831&viewfull=1#post78831
-//sgtl5000_1.adcHighPassFilterFreeze();
-  sgtl5000_2.setAddress(HIGH);            // T41 has only a single Audio Adaptor.  This is being used essentially as a 2nd I2S port.
+  sgtl5000_1.adcHighPassFilterEnable();  
+  sgtl5000_1.adcHighPassFilterDisable();  //reduces noise.  https://forum.pjrc.com/threads/27215-24-bit-audio-boards?p=78831&viewfull=1#post78831
+  sgtl5000_1.adcHighPassFilterFreeze();
+  sgtl5000_2.setAddress(LOW);            // T41 has only a single Audio Adaptor.  This is being used essentially as a 2nd I2S port.
+#else // RECEIVE_ONLY
   sgtl5000_2.enable();
   sgtl5000_2.inputSelect(AUDIO_INPUT_LINEIN);  // Why is a second sgtl5000 device used???  This is the receiver ADCs, PCM1808?
   sgtl5000_2.muteHeadphone();                  // KF5N March 11, 2024
                                                //  sgtl5000_2.volume(0.5);   //  Headphone volume???  Not required as headphone is muted.
+#endif //TRANSMITTER
   updateMic();  // This updates the transmit signal chain settings.
+#ifdef RECEIVE_ONLY // force receive right now
+  SetAudioOperatingState(RadioState::SSB_RECEIVE_STATE);
+#endif
 
+#ifdef TRANSMITTER
 // Set up "Controlled Envelope Single Side Band" from the Open Audio Library.
    cessb1.setSampleRate_Hz(48000);
    cessb1.setGains(3.5f, 1.4f, 0.5f);  // gainIn, gainCompensate, gainOut
@@ -1161,6 +1170,7 @@ sgtl5000_1.adcHighPassFilterEnable();
 
   Q_out_L_Ex.setMaxBuffers(32);       // Limits determined emperically.  These may need more adjustment.  Greg KF5N August 4, 2024.
   Q_out_R_Ex.setMaxBuffers(32);
+#endif //TRANSMITTER
   Q_out_L.setMaxBuffers(64);          // Receiver audio buffer limit.
 
   // GPOs used to control hardware.
@@ -1259,6 +1269,24 @@ sgtl5000_1.adcHighPassFilterEnable();
   /****************************************************************************************
      start local oscillator Si5351
   ****************************************************************************************/
+#if defined(HARDWARE_F1FGV)
+  bool i2c_found = false;
+  while (!i2c_found){
+    i2c_found = si5351.init(SI5351_CRYSTAL_LOAD_6PF, Si_5351_crystal, 0);
+    delay(10);
+  }
+  si5351.reset();
+  si5351.set_correction(16100L, SI5351_PLL_INPUT_XO); // correction is in 1/100 Hz at 10MHz, added to xtal freq, appears substracted from output freq
+  si5351.plla_ref_osc = SI5351_PLL_INPUT_XO;
+  si5351.pllb_ref_osc = SI5351_PLL_INPUT_XO;
+  si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
+  si5351.set_ms_source(SI5351_CLK1, SI5351_PLLA);
+  si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
+  si5351.drive_strength(SI5351_CLK0,SI5351_DRIVE_8MA); //8MA is 10dBm
+  si5351.drive_strength(SI5351_CLK1,SI5351_DRIVE_8MA);
+  si5351.drive_strength(SI5351_CLK2,SI5351_DRIVE_2MA);
+  Serial.println("si5351 initialized");
+#else
   si5351.reset();                                                                           // KF5N.  Moved Si5351 start-up to setup. JJP  7/14/23
   si5351.init(SI5351_CRYSTAL_LOAD_10PF, Si_5351_crystal, EEPROMData.freqCorrectionFactor);  // JJP  7/14/23
   si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);                                           // Allows CLK1 and CLK2 to exceed 100 MHz simultaneously.
@@ -1271,7 +1299,7 @@ sgtl5000_1.adcHighPassFilterEnable();
   // Turn off LOs.  Should be default state after init, so probably not really necessary here.
   si5351.output_enable(SI5351_CLK2, 0);
   si5351.output_enable(SI5351_CLK1, 0);
-
+#endif
   InitializeDataArrays();
   // Initialize user defined stuff
   initUserDefinedStuff();

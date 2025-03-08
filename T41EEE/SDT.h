@@ -186,8 +186,8 @@ const int FILTER_ENCODER_A = 15;
 const int FILTER_ENCODER_B = 14;
 const int FINETUNE_ENCODER_A = 4;
 const int FINETUNE_ENCODER_B = 5;
-const int TUNE_ENCODER_A = 16;
-const int TUNE_ENCODER_B = 17;
+const int TUNE_ENCODER_A = 1;
+const int TUNE_ENCODER_B = 0;
 #endif
 
 //========================================= Filter Board pins

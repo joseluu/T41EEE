@@ -9,10 +9,10 @@
 //#define FAST_TUNE                                                         // Uncomment to activate variable speed fast tune by Harry GM3RVL.                             
 #define DEFAULT_KEYER_WPM   			15                                        // Startup value for keyer wpm
 #define FREQ_SEP_CHARACTER  			'.'					                              // Some may prefer period, space, or combo
-#define MAP_FILE_NAME   					"Cincinnati.bmp"                          // Name you gave to BMP map file. Max is 50 chars
-#define MY_LAT										39.07466                                  // Coordinates for QTH
-#define MY_LON										-84.42677
-#define MY_CALL										"YOUR CALL"                                   // Default max is 10 chars
+#define MAP_FILE_NAME   					"France.bmp"                          // Name you gave to BMP map file. Max is 50 chars
+#define MY_LAT								48.8575                                  // Coordinates for QTH
+#define MY_LON								2.3514
+#define MY_CALL								"F1FGV"                                   // Default max is 10 chars
 #define MY_TIMEZONE          			"CET: "                                   // Default max is 10 chars
 //DB2OO, 29-AUG-23: TIME_24H to display 24 hour times (Utility.cpp). If this is not defined 12h display will be used
 #define TIME_24H                  1
@@ -32,13 +32,19 @@
 #define STRAIGHT_KEY_OR_PADDLES		0						                              // 0 = straight, 1 = paddles
 #define SDCARD_MESSAGE_LENGTH     3000L                                     // The number of milliseconds to leave error message on screen
 
+#define HARDWARE_F1FGV
+#define RECEIVE_ONLY
+#ifndef RECEIVE_ONLY
+#define TRANSMITTER
+#endif
+
 //====================== System specific ===============
 #define CURRENT_FREQ_A            7200000                                   // VFO_A
 #define CURRENT_FREQ_B            7030000                                   // VFO_B
                                          // This is an array index: {10, 50, 100, 250, 1000, 10000, 100000, 1000000}
 #define DEFAULT_POWER_LEVEL       10                                        // Startup power level. Probably 20 for most people
 			 		                              //  This is an array: { 10, 50, 250, 500 }
-#define SPLASH_DELAY              4000L                                     // How long to show Splash screen. Use 1000 for testing, 4000 normally
+#define SPLASH_DELAY              1000L                                     // How long to show Splash screen. Use 1000 for testing, 4000 normally
 #define STARTUP_BAND        			1                                         // This is the 40M band. see around line 575 in SDT.h
 
 #define CENTER_SCREEN_X           400
