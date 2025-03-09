@@ -1,3 +1,10 @@
+### Modified for receive only function
+
+Using the sdr front end described here: https://github.com/joseluu/Elektor_sdr_teensy
+
+
+
+The following is the original readme
 ### Version T41EEE.8 T41 Software Defined Transceiver Arduino Sketch
 
 This is the "T41 Extreme Experimenter's Edition" software for the 
